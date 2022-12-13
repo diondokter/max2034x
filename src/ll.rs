@@ -6,13 +6,10 @@ use crate::{
 };
 use core::{fmt::Debug, marker::PhantomData};
 use device_driver::{
-    create_low_level_device, implement_registers, ll::register::RegisterInterface, Bit,
+    create_low_level_device, implement_registers_async, ll::register_async::RegisterInterfaceAsync, Bit,
 };
 
-#[cfg(feature = "eh-02")]
-use embedded_hal02::blocking::i2c::{Write, WriteRead};
-#[cfg(feature = "eh-1")]
-use embedded_hal1::i2c::I2c;
+use embedded_hal_async::i2c::I2c;
 
 /// Interface to the device
 pub struct Max2034xInterface<V, I2C> {
@@ -38,52 +35,7 @@ where
     }
 }
 
-#[cfg(feature = "eh-02")]
-impl<V, I2C, EBUS> RegisterInterface for Max2034xInterface<V, I2C>
-where
-    V: DeviceVersion,
-    I2C: Write<Error = EBUS> + WriteRead<Error = EBUS>,
-    EBUS: Debug,
-{
-    type Address = u8;
-    type InterfaceError = DeviceError<EBUS>;
-
-    fn read_register(
-        &mut self,
-        address: Self::Address,
-        value: &mut [u8],
-    ) -> Result<(), DeviceError<EBUS>> {
-        self.i2c.write_read(V::ADDR, &[address], value)?;
-        Ok(())
-    }
-
-    fn write_register(
-        &mut self,
-        address: Self::Address,
-        value: &[u8],
-    ) -> Result<(), DeviceError<EBUS>> {
-        // All registers are 1 byte, so value is only ever 1 byte long
-        debug_assert_eq!(value.len(), 1);
-        self.i2c
-            .write(V::ADDR, &[address, value[0]])?;
-        Ok(())
-    }
-}
-
-#[cfg(feature = "eh-02")]
-impl<V, I2C, EBUS> HardwareInterface for Max2034xInterface<V, I2C>
-where
-    V: DeviceVersion,
-    I2C: Write<Error = EBUS> + WriteRead<Error = EBUS>,
-    EBUS: Debug,
-{
-    type BootState = V::BootState;
-    const CHIP_ID: u8 = V::CHIP_ID;
-    const DEFAULT_INDUCTOR_CONFIG: Inductor = V::DEFAULT_INDUCTOR_CONFIG;
-}
-
-#[cfg(feature = "eh-1")]
-impl<V, I2C, EBUS> RegisterInterface for Max2034xInterface<V, I2C>
+impl<V, I2C, EBUS> RegisterInterfaceAsync for Max2034xInterface<V, I2C>
 where
     V: DeviceVersion,
     I2C: I2c<Error = EBUS>,
@@ -92,16 +44,16 @@ where
     type Address = u8;
     type InterfaceError = DeviceError<EBUS>;
 
-    fn read_register(
+    async fn read_register(
         &mut self,
         address: Self::Address,
         value: &mut [u8],
     ) -> Result<(), DeviceError<EBUS>> {
-        self.i2c.write_read(V::ADDR, &[address], value)?;
+        self.i2c.write_read(V::ADDR, &[address], value).await?;
         Ok(())
     }
 
-    fn write_register(
+    async fn write_register(
         &mut self,
         address: Self::Address,
         value: &[u8],
@@ -109,12 +61,11 @@ where
         // All registers are 1 byte, so value is only ever 1 byte long
         debug_assert_eq!(value.len(), 1);
         self.i2c
-            .write(V::ADDR, &[address, value[0]])?;
+            .write(V::ADDR, &[address, value[0]]).await?;
         Ok(())
     }
 }
 
-#[cfg(feature = "eh-1")]
 impl<V, I2C, EBUS> HardwareInterface for Max2034xInterface<V, I2C>
 where
     V: DeviceVersion,
@@ -130,7 +81,7 @@ create_low_level_device!(
 #[doc = "Low-level device, used to directly read and modify register values."]
 Max2034xLL {
     errors: [],
-    hardware_interface_requirements: {RegisterInterface<Address = u8>},
+    hardware_interface_requirements: {RegisterInterfaceAsync<Address = u8>},
     hardware_interface_capabilities: {
         type BootState: InitializedState;
         const CHIP_ID: u8;
@@ -138,7 +89,7 @@ Max2034xLL {
     },
 });
 
-implement_registers!(
+implement_registers_async!(
 #[doc = "Register definitions"]
 Max2034xLL.registers<u8> = {
     #[doc = "ChipID (0x00)"]

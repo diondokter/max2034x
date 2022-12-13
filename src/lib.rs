@@ -1,10 +1,11 @@
 #![no_std]
 #![doc = include_str!("../README.md")]
+#![feature(async_fn_in_trait)]
+#![allow(incomplete_features)]
 
 use core::{fmt::Debug, marker::PhantomData};
-
 use device_driver::{
-    ll::{register::RegisterInterface, LowLevelDevice},
+    ll::{register_async::RegisterInterfaceAsync, LowLevelDevice},
     Bit,
 };
 use devices::DeviceVersion;
@@ -13,16 +14,8 @@ use ll::{HardwareInterface, Max2034xLL};
 use state::{Disabled, Enabled, InitializedState, State, Uninitialized};
 pub use types::*;
 
-#[cfg(feature = "eh-02")]
-use embedded_hal02::{
-    blocking::i2c::{Write, WriteRead},
-    digital::v2::{InputPin, OutputPin},
-};
-#[cfg(feature = "eh-1")]
-use embedded_hal1::{
-    digital::{InputPin, OutputPin},
-    i2c::I2c,
-};
+use embedded_hal::digital::{InputPin, OutputPin};
+use embedded_hal_async::i2c::I2c;
 
 /// Version-specific declarations
 pub mod devices;
@@ -45,33 +38,10 @@ pub struct Max2034x<I: HardwareInterface, BF, BI, S: State> {
     _marker: PhantomData<S>,
 }
 
-type Result<T, I> = core::result::Result<T, DeviceError<<I as RegisterInterface>::InterfaceError>>;
+type Result<T, I> = core::result::Result<T, DeviceError<<I as RegisterInterfaceAsync>::InterfaceError>>;
 type NewDeviceResult<V, I2C, BF, BI, BS> =
     Result<Max2034x<ll::Max2034xInterface<V, I2C>, BF, BI, BS>, ll::Max2034xInterface<V, I2C>>;
 
-#[cfg(feature = "eh-02")]
-impl<V, I2C, EBUS, BF, BI> Max2034x<ll::Max2034xInterface<V, I2C>, BF, BI, Uninitialized>
-where
-    V: DeviceVersion,
-    I2C: Write<Error = EBUS> + WriteRead<Error = EBUS>,
-    EBUS: Debug,
-    BF: OutputPin,
-    BI: InputPin,
-{
-    /// Create a new device instance. Creates a new low-level Max2034xInterface, and
-    /// calls [`Self::with_interface`], passing the low-level interface.
-    pub fn new(
-        i2c: I2C,
-        version: V,
-        pins: Pins<BF, BI>,
-        inductor: Inductor,
-    ) -> NewDeviceResult<V, I2C, BF, BI, V::BootState> {
-        let ll = ll::Max2034xInterface::new(i2c, version);
-        Self::with_interface(ll, pins, inductor)
-    }
-}
-
-#[cfg(feature = "eh-1")]
 impl<V, I2C, EBUS, BF, BI> Max2034x<ll::Max2034xInterface<V, I2C>, BF, BI, Uninitialized>
 where
     V: DeviceVersion,
@@ -82,14 +52,14 @@ where
 {
     /// Create a new device instance. Creates a new low-level Max2034xInterface, and
     /// calls [`Self::with_interface`], passing the low-level interface.
-    pub fn new(
+    pub async fn new(
         i2c: I2C,
         version: V,
         pins: Pins<BF, BI>,
         inductor: Inductor,
     ) -> NewDeviceResult<V, I2C, BF, BI, V::BootState> {
         let ll = ll::Max2034xInterface::new(i2c, version);
-        Self::with_interface(ll, pins, inductor)
+        Self::with_interface(ll, pins, inductor).await
     }
 }
 
@@ -102,7 +72,7 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Unin
     /// For initally enabled devices (BBstEn = Enabled in Table 3 of the datasheet), you
     /// need to disable and re-enable the device in order for the FET scale
     /// update to take effect if it differs from the default.
-    pub fn with_interface(
+    pub async fn with_interface(
         interface: I,
         pins: Pins<BF, BI>,
         inductor: Inductor,
@@ -114,7 +84,7 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Unin
             _marker: PhantomData,
         };
 
-        let chip_id = buck_boost.ll.registers().chip_id().read()?.id();
+        let chip_id = buck_boost.ll.registers().chip_id().read().await?.id();
         if chip_id != I::CHIP_ID {
             return Err(DeviceError::BadDeviceId);
         }
@@ -130,7 +100,7 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Unin
                 .ll
                 .registers()
                 .b_bst_cfg1()
-                .modify(|_, w| w.b_bst_fet_scale(fet_scale))?;
+                .modify(|_, w| w.b_bst_fet_scale(fet_scale)).await?;
         }
 
         Ok(buck_boost.into_state())
@@ -150,8 +120,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: State> Max2034x<I, BF
 
     /// Get the device's Chip ID. See Table 3
     /// in the Datasheet for expected values
-    pub fn get_chip_id(&mut self) -> Result<u8, I> {
-        let id = self.ll.registers().chip_id().read()?.id();
+    pub async fn get_chip_id(&mut self) -> Result<u8, I> {
+        let id = self.ll.registers().chip_id().read().await?.id();
         Ok(id)
     }
 
@@ -162,58 +132,58 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: State> Max2034x<I, BF
 
 impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Disabled> {
     /// Enable device output power. If succesful, returns an enabled device.
-    pub fn enable(mut self) -> Result<Max2034x<I, BF, BI, Enabled>, I> {
+    pub async fn enable(mut self) -> Result<Max2034x<I, BF, BI, Enabled>, I> {
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_en(Bit::Set))?;
+            .modify(|_, w| w.b_bst_en(Bit::Set)).await?;
         Ok(self.into_state())
     }
 
     /// Enable or disable zero crossing comparator.
-    pub fn enable_zero_crossing_comparator(&mut self, enabled: bool) -> Result<(), I> {
+    pub async fn enable_zero_crossing_comparator(&mut self, enabled: bool) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_zc_cmp_dis(Bit::from(!enabled)))?;
+            .modify(|_, w| w.b_bst_zc_cmp_dis(Bit::from(!enabled))).await?;
         Ok(())
     }
 
     /// Enable or disable pass through mode.
-    pub fn enable_pass_through_mode(&mut self, enabled: bool) -> Result<(), I> {
+    pub async fn enable_pass_through_mode(&mut self, enabled: bool) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg1()
-            .modify(|_, w| w.pas_thr_mode(Bit::from(enabled)))?;
+            .modify(|_, w| w.pas_thr_mode(Bit::from(enabled))).await?;
         Ok(())
     }
 
     /// Enable or disable integrator.
-    pub fn enable_integrator(&mut self, enabled: bool) -> Result<(), I> {
+    pub async fn enable_integrator(&mut self, enabled: bool) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg1()
-            .modify(|_, w| w.b_bst_integ_en(Bit::from(enabled)))?;
+            .modify(|_, w| w.b_bst_integ_en(Bit::from(enabled))).await?;
         Ok(())
     }
 
     /// Set buck-boost mode.
-    pub fn set_buck_boost_mode(&mut self, mode: BuckBoostMode) -> Result<(), I> {
+    pub async fn set_buck_boost_mode(&mut self, mode: BuckBoostMode) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_mode(mode))?;
+            .modify(|_, w| w.b_bst_mode(mode)).await?;
         Ok(())
     }
 }
 
 impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Enabled> {
     /// Disable device output power. If succesful, returns a disabled device.
-    pub fn disable(mut self) -> Result<Max2034x<I, BF, BI, Disabled>, I> {
+    pub async fn disable(mut self) -> Result<Max2034x<I, BF, BI, Disabled>, I> {
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_en(Bit::Cleared))?;
+            .modify(|_, w| w.b_bst_en(Bit::Cleared)).await?;
         Ok(self.into_state())
     }
 }
@@ -229,65 +199,65 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
     }
 
     /// Enable or disable gradually ramping up the output voltage.
-    pub fn enable_ramp(&mut self, enabled: bool) -> Result<(), I> {
+    pub async fn enable_ramp(&mut self, enabled: bool) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_ramp_en(Bit::from(enabled)))?;
+            .modify(|_, w| w.b_bst_ramp_en(Bit::from(enabled))).await?;
         Ok(())
     }
 
     /// Enable or disable low EMI mode.
-    pub fn enable_low_emi(&mut self, enabled: bool) -> Result<(), I> {
+    pub async fn enable_low_emi(&mut self, enabled: bool) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_low_emi(Bit::from(enabled)))?;
+            .modify(|_, w| w.b_bst_low_emi(Bit::from(enabled))).await?;
         Ok(())
     }
 
     /// Enable or disable active discharge.
-    pub fn enable_active_discharge(&mut self, enabled: bool) -> Result<(), I> {
+    pub async fn enable_active_discharge(&mut self, enabled: bool) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_act_dsc(Bit::from(enabled)))?;
+            .modify(|_, w| w.b_bst_act_dsc(Bit::from(enabled))).await?;
         Ok(())
     }
 
     /// Enable or disable passive discharge.
-    pub fn enable_passive_discharge(&mut self, enabled: bool) -> Result<(), I> {
+    pub async fn enable_passive_discharge(&mut self, enabled: bool) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_psv_dsc(Bit::from(enabled)))?;
+            .modify(|_, w| w.b_bst_psv_dsc(Bit::from(enabled))).await?;
         Ok(())
     }
 
     /// Enable or disable using the fast boost pin to toggle fast boost mode.
-    pub fn enable_fast_boost_pin(&mut self, enabled: bool) -> Result<(), I> {
+    pub async fn enable_fast_boost_pin(&mut self, enabled: bool) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg1()
-            .modify(|_, w| w.fst_cmp_en(Bit::from(enabled)))?;
+            .modify(|_, w| w.fst_cmp_en(Bit::from(enabled))).await?;
         Ok(())
     }
 
     /// Set force switch over mode.
-    pub fn set_force_switch_over(&mut self, mode: SwitchOverMode) -> Result<(), I> {
+    pub async fn set_force_switch_over(&mut self, mode: SwitchOverMode) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg1()
-            .modify(|_, w| w.swo_frc_in(mode))?;
+            .modify(|_, w| w.swo_frc_in(mode)).await?;
         Ok(())
     }
 
     /// Enable or disable fast boost by register.
-    pub fn enable_fast_boost_by_register(&mut self, enabled: bool) -> Result<(), I> {
+    pub async fn enable_fast_boost_by_register(&mut self, enabled: bool) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_fast(enabled.into()))?;
+            .modify(|_, w| w.b_bst_fast(enabled.into())).await?;
 
         Ok(())
     }
@@ -313,42 +283,42 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
     }
 
     /// Read the interrupt cause register.
-    pub fn get_interrupt_cause(&mut self) -> Result<InterruptStatus, I> {
-        let int = self.ll.registers().int().read()?.int().unwrap();
+    pub async fn get_interrupt_cause(&mut self) -> Result<InterruptStatus, I> {
+        let int = self.ll.registers().int().read().await?.int().unwrap();
         Ok(int)
     }
 
     /// Read the status register.
-    pub fn get_status(&mut self) -> Result<InterruptStatus, I> {
-        let status = self.ll.registers().status().read()?.status().unwrap();
+    pub async fn get_status(&mut self) -> Result<InterruptStatus, I> {
+        let status = self.ll.registers().status().read().await?.status().unwrap();
         Ok(status)
     }
 
     /// Enable an interrupt. Use [`InterruptStatus::Both`] to enable both interrupts.
-    pub fn enable_interrupt(&mut self, interrupt: InterruptStatus) -> Result<(), I> {
+    pub async fn enable_interrupt(&mut self, interrupt: InterruptStatus) -> Result<(), I> {
         self.ll
             .registers()
             .mask()
-            .modify(|_, w| w.mask(!interrupt))?;
+            .modify(|_, w| w.mask(!interrupt)).await?;
         Ok(())
     }
 
-    fn lock_vset(&mut self, locked: bool) -> Result<(), I> {
+    async fn lock_vset(&mut self, locked: bool) -> Result<(), I> {
         self.ll
             .registers()
             .lock_msk()
-            .modify(|_, w| w.b_bst_lck(Bit::Cleared))?;
+            .modify(|_, w| w.b_bst_lck(Bit::Cleared)).await?;
 
         let passwd = if locked { 0xAA } else { 0x55 };
 
         self.ll
             .registers()
             .lock_unlock()
-            .modify(|_, w| w.passwd(passwd))?;
+            .modify(|_, w| w.passwd(passwd)).await?;
         self.ll
             .registers()
             .lock_msk()
-            .modify(|_, w| w.b_bst_lck(Bit::Set))?;
+            .modify(|_, w| w.b_bst_lck(Bit::Set)).await?;
         Ok(())
     }
 
@@ -356,7 +326,7 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
     /// to also set recommended peak current limits. Also takes care
     /// of locking and unlocking the BBstVSet register and masking and
     /// unmasking from locking using the LockMsk register.
-    pub fn set_output_voltage(&mut self, v_out: OutputVoltage) -> Result<(), I> {
+    pub async fn set_output_voltage(&mut self, v_out: OutputVoltage) -> Result<(), I> {
         // Below values are based on figure 5 of the datasheet.
         let (step_up_raw, step_down_raw) = match v_out.millivolts() {
             2500..=2749 => (0b0100, 0b1010),
@@ -374,16 +344,16 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         };
         // We follow the recommended values here (figure 5),
         // so no further need to check for safety.
-        self.set_raw_peak_current_limits(step_up_raw, step_down_raw)?;
+        self.set_raw_peak_current_limits(step_up_raw, step_down_raw).await?;
 
-        self.lock_vset(false)?;
+        self.lock_vset(false).await?;
 
         let res = self
             .ll
             .registers()
             .b_bst_v_set()
-            .modify(|_, w| w.b_bst_v_set(v_out.raw));
-        self.lock_vset(true)?;
+            .modify(|_, w| w.b_bst_v_set(v_out.raw)).await;
+        self.lock_vset(true).await?;
 
         // make sure we lock again before returning an error.
         res?;
@@ -395,7 +365,7 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
     /// V<sub>IN</sub> > V<sub>OUT</sub>. Enforces the safe operating area
     /// of these values according to figure 4 in the datasheet, by
     /// clipping the step_down value.
-    pub fn set_peak_current_limits(
+    pub async fn set_peak_current_limits(
         &mut self,
         step_up: CurrentLimit,   // BBstIPSet1
         step_down: CurrentLimit, // BBstIPSet2
@@ -413,36 +383,36 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.set_raw_peak_current_limits(
             step_up.raw(self.inductor),
             step_down.raw(self.inductor).max(step_down_minimum_raw),
-        )
+        ).await
     }
 
     /// Sets peak current limits from raw values.
     /// Make sure these values are within the bounds specified
     /// figure 4 of the datasheet.
-    fn set_raw_peak_current_limits(&mut self, step_up_raw: u8, step_down_raw: u8) -> Result<(), I> {
+    async fn set_raw_peak_current_limits(&mut self, step_up_raw: u8, step_down_raw: u8) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_i_set()
-            .modify(|_, w| w.b_bst_ip_set1(step_up_raw).b_bst_ip_set2(step_down_raw))?;
+            .modify(|_, w| w.b_bst_ip_set1(step_up_raw).b_bst_ip_set2(step_down_raw)).await?;
 
         Ok(())
     }
 
     /// Set switching frequency threshold.
-    pub fn set_switch_freq_threshold(&mut self, f_ths: FrequencyThreshold) -> Result<(), I> {
+    pub async fn set_switch_freq_threshold(&mut self, f_ths: FrequencyThreshold) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_v_set()
-            .modify(|_, w| w.b_bst_fhigh_sh(f_ths))?;
+            .modify(|_, w| w.b_bst_fhigh_sh(f_ths)).await?;
         Ok(())
     }
 
     /// Set the `BBstIPAdptDis` adaptive peak/valley current adjustment
-    pub fn set_adaptive_current_adjustment(&mut self, enabled: bool) -> Result<(), I> {
+    pub async fn set_adaptive_current_adjustment(&mut self, enabled: bool) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_cfg1()
-            .modify(|_, w| w.b_bst_ip_adpt_dis(Bit::from(!enabled)))?;
+            .modify(|_, w| w.b_bst_ip_adpt_dis(Bit::from(!enabled))).await?;
         Ok(())
     }
 }
