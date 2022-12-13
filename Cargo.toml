@@ -15,7 +15,7 @@ exclude = ["Cargo.lock", ".gitignore"]
 [dependencies]
 embedded-hal = "1.0.0-alpha.9"
 embedded-hal-async = "0.2.0-alpha.0"
-device-driver = { git = "https://github.com/diondokter/device-driver.git", features = ["async"] }
+device-driver = { version = "0.4.1", features = ["async"] }
 num_enum = { version = "0.5.1", default_features = false }
 defmt = { version = "0.3.2", optional = true }
 
