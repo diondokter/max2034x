@@ -13,10 +13,10 @@ categories = ["embedded", "no-std"]
 exclude = ["Cargo.lock", ".gitignore"]
 
 [dependencies]
-embedded-hal = "1.0.0-alpha.9"
-embedded-hal-async = "0.2.0-alpha.0"
+embedded-hal = "1.0.0-rc.1"
+embedded-hal-async = "1.0.0-rc.1"
 device-driver = { version = "0.4.1", features = ["async"] }
-num_enum = { version = "0.5.1", default_features = false }
+num_enum = { version = "0.7.0", default_features = false }
 defmt = { version = "0.3.2", optional = true }
 
 [features]
