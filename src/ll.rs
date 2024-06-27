@@ -6,7 +6,8 @@ use crate::{
 };
 use core::{fmt::Debug, marker::PhantomData};
 use device_driver::{
-    create_low_level_device, implement_registers_async, ll::register_async::RegisterInterfaceAsync, Bit,
+    create_low_level_device, implement_registers_async, ll::register_async::RegisterInterfaceAsync,
+    Bit,
 };
 
 use embedded_hal_async::i2c::I2c;
@@ -60,8 +61,7 @@ where
     ) -> Result<(), DeviceError<EBUS>> {
         // All registers are 1 byte, so value is only ever 1 byte long
         debug_assert_eq!(value.len(), 1);
-        self.i2c
-            .write(V::ADDR, &[address, value[0]]).await?;
+        self.i2c.write(V::ADDR, &[address, value[0]]).await?;
         Ok(())
     }
 }

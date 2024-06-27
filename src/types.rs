@@ -75,7 +75,7 @@ impl OutputVoltage {
     /// Build OutputVoltage from number of millivolts.
     /// Value is clipped at bounds `2500 <= mV <= 5500`
     pub fn from_millivolts(millivolts: u16) -> Self {
-        let millivolts = millivolts.max(2500).min(5500);
+        let millivolts = millivolts.clamp(2500, 5500);
         let raw = ((millivolts - 2500) / 50) as u8;
         debug_assert!(raw < 0b111100);
         Self { raw }

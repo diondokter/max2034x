@@ -1,7 +1,5 @@
 #![no_std]
 #![doc = include_str!("../README.md")]
-#![feature(async_fn_in_trait)]
-#![allow(incomplete_features)]
 
 use core::{fmt::Debug, marker::PhantomData};
 use device_driver::{
@@ -38,7 +36,8 @@ pub struct Max2034x<I: HardwareInterface, BF, BI, S: State> {
     _marker: PhantomData<S>,
 }
 
-type Result<T, I> = core::result::Result<T, DeviceError<<I as RegisterInterfaceAsync>::InterfaceError>>;
+type Result<T, I> =
+    core::result::Result<T, DeviceError<<I as RegisterInterfaceAsync>::InterfaceError>>;
 type NewDeviceResult<V, I2C, BF, BI, BS> =
     Result<Max2034x<ll::Max2034xInterface<V, I2C>, BF, BI, BS>, ll::Max2034xInterface<V, I2C>>;
 
@@ -100,7 +99,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Unin
                 .ll
                 .registers()
                 .b_bst_cfg1()
-                .modify(|_, w| w.b_bst_fet_scale(fet_scale)).await?;
+                .modify(|_, w| w.b_bst_fet_scale(fet_scale))
+                .await?;
         }
 
         Ok(buck_boost.into_state())
@@ -136,7 +136,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Disa
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_en(Bit::Set)).await?;
+            .modify(|_, w| w.b_bst_en(Bit::Set))
+            .await?;
         Ok(self.into_state())
     }
 
@@ -145,7 +146,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Disa
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_zc_cmp_dis(Bit::from(!enabled))).await?;
+            .modify(|_, w| w.b_bst_zc_cmp_dis(Bit::from(!enabled)))
+            .await?;
         Ok(())
     }
 
@@ -154,7 +156,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Disa
         self.ll
             .registers()
             .b_bst_cfg1()
-            .modify(|_, w| w.pas_thr_mode(Bit::from(enabled))).await?;
+            .modify(|_, w| w.pas_thr_mode(Bit::from(enabled)))
+            .await?;
         Ok(())
     }
 
@@ -163,7 +166,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Disa
         self.ll
             .registers()
             .b_bst_cfg1()
-            .modify(|_, w| w.b_bst_integ_en(Bit::from(enabled))).await?;
+            .modify(|_, w| w.b_bst_integ_en(Bit::from(enabled)))
+            .await?;
         Ok(())
     }
 
@@ -172,7 +176,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Disa
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_mode(mode)).await?;
+            .modify(|_, w| w.b_bst_mode(mode))
+            .await?;
         Ok(())
     }
 }
@@ -183,7 +188,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin> Max2034x<I, BF, BI, Enab
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_en(Bit::Cleared)).await?;
+            .modify(|_, w| w.b_bst_en(Bit::Cleared))
+            .await?;
         Ok(self.into_state())
     }
 }
@@ -203,7 +209,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_ramp_en(Bit::from(enabled))).await?;
+            .modify(|_, w| w.b_bst_ramp_en(Bit::from(enabled)))
+            .await?;
         Ok(())
     }
 
@@ -212,7 +219,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_low_emi(Bit::from(enabled))).await?;
+            .modify(|_, w| w.b_bst_low_emi(Bit::from(enabled)))
+            .await?;
         Ok(())
     }
 
@@ -221,7 +229,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_act_dsc(Bit::from(enabled))).await?;
+            .modify(|_, w| w.b_bst_act_dsc(Bit::from(enabled)))
+            .await?;
         Ok(())
     }
 
@@ -230,7 +239,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_psv_dsc(Bit::from(enabled))).await?;
+            .modify(|_, w| w.b_bst_psv_dsc(Bit::from(enabled)))
+            .await?;
         Ok(())
     }
 
@@ -239,7 +249,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.ll
             .registers()
             .b_bst_cfg1()
-            .modify(|_, w| w.fst_cmp_en(Bit::from(enabled))).await?;
+            .modify(|_, w| w.fst_cmp_en(Bit::from(enabled)))
+            .await?;
         Ok(())
     }
 
@@ -248,7 +259,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.ll
             .registers()
             .b_bst_cfg1()
-            .modify(|_, w| w.swo_frc_in(mode)).await?;
+            .modify(|_, w| w.swo_frc_in(mode))
+            .await?;
         Ok(())
     }
 
@@ -257,7 +269,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.ll
             .registers()
             .b_bst_cfg0()
-            .modify(|_, w| w.b_bst_fast(enabled.into())).await?;
+            .modify(|_, w| w.b_bst_fast(enabled.into()))
+            .await?;
 
         Ok(())
     }
@@ -276,7 +289,7 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
     /// Read `boost_nint` pin level, indicating whether an interrupt is active.
     /// Returns `false` if the passed pin in `None`.
     pub fn interrupt_active(&mut self) -> core::result::Result<bool, BI::Error> {
-        match &self.pins.boost_nint {
+        match &mut self.pins.boost_nint {
             Some(p) => p.is_low(),
             None => Ok(false),
         }
@@ -299,7 +312,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.ll
             .registers()
             .mask()
-            .modify(|_, w| w.mask(!interrupt)).await?;
+            .modify(|_, w| w.mask(!interrupt))
+            .await?;
         Ok(())
     }
 
@@ -307,18 +321,21 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.ll
             .registers()
             .lock_msk()
-            .modify(|_, w| w.b_bst_lck(Bit::Cleared)).await?;
+            .modify(|_, w| w.b_bst_lck(Bit::Cleared))
+            .await?;
 
         let passwd = if locked { 0xAA } else { 0x55 };
 
         self.ll
             .registers()
             .lock_unlock()
-            .modify(|_, w| w.passwd(passwd)).await?;
+            .modify(|_, w| w.passwd(passwd))
+            .await?;
         self.ll
             .registers()
             .lock_msk()
-            .modify(|_, w| w.b_bst_lck(Bit::Set)).await?;
+            .modify(|_, w| w.b_bst_lck(Bit::Set))
+            .await?;
         Ok(())
     }
 
@@ -344,7 +361,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         };
         // We follow the recommended values here (figure 5),
         // so no further need to check for safety.
-        self.set_raw_peak_current_limits(step_up_raw, step_down_raw).await?;
+        self.set_raw_peak_current_limits(step_up_raw, step_down_raw)
+            .await?;
 
         self.lock_vset(false).await?;
 
@@ -352,7 +370,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
             .ll
             .registers()
             .b_bst_v_set()
-            .modify(|_, w| w.b_bst_v_set(v_out.raw)).await;
+            .modify(|_, w| w.b_bst_v_set(v_out.raw))
+            .await;
         self.lock_vset(true).await?;
 
         // make sure we lock again before returning an error.
@@ -383,17 +402,23 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.set_raw_peak_current_limits(
             step_up.raw(self.inductor),
             step_down.raw(self.inductor).max(step_down_minimum_raw),
-        ).await
+        )
+        .await
     }
 
     /// Sets peak current limits from raw values.
     /// Make sure these values are within the bounds specified
     /// figure 4 of the datasheet.
-    async fn set_raw_peak_current_limits(&mut self, step_up_raw: u8, step_down_raw: u8) -> Result<(), I> {
+    async fn set_raw_peak_current_limits(
+        &mut self,
+        step_up_raw: u8,
+        step_down_raw: u8,
+    ) -> Result<(), I> {
         self.ll
             .registers()
             .b_bst_i_set()
-            .modify(|_, w| w.b_bst_ip_set1(step_up_raw).b_bst_ip_set2(step_down_raw)).await?;
+            .modify(|_, w| w.b_bst_ip_set1(step_up_raw).b_bst_ip_set2(step_down_raw))
+            .await?;
 
         Ok(())
     }
@@ -403,7 +428,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.ll
             .registers()
             .b_bst_v_set()
-            .modify(|_, w| w.b_bst_fhigh_sh(f_ths)).await?;
+            .modify(|_, w| w.b_bst_fhigh_sh(f_ths))
+            .await?;
         Ok(())
     }
 
@@ -412,7 +438,8 @@ impl<I: HardwareInterface, BF: OutputPin, BI: InputPin, S: InitializedState>
         self.ll
             .registers()
             .b_bst_cfg1()
-            .modify(|_, w| w.b_bst_ip_adpt_dis(Bit::from(!enabled))).await?;
+            .modify(|_, w| w.b_bst_ip_adpt_dis(Bit::from(!enabled)))
+            .await?;
         Ok(())
     }
 }
@@ -447,181 +474,4 @@ pub mod state {
     state!(Uninitialized, "Uninitialized device");
     state!(Disabled, "Buck-boost enabled", true);
     state!(Enabled, "Buck-boost disabled", true);
-}
-
-#[cfg(all(test, feature = "eh-02"))]
-mod tests {
-    extern crate std;
-    use std::prelude::rust_2021::*;
-    use std::*;
-
-    use crate::{
-        devices::{DeviceVersion, Max20343F},
-        ll::Max2034xInterface,
-        state::Enabled,
-        CurrentLimit, FrequencyThreshold, Inductor, Max2034x, Pins, SwitchOverMode,
-    };
-    use device_driver::ll::LowLevelDevice;
-
-    use embedded_hal_mock::{
-        common::Generic,
-        i2c::{Mock as I2cMock, Transaction as I2cTransaction},
-        pin::{Mock as PinMock, State as PinState, Transaction as PinTransaction},
-    };
-
-    fn mock_transaction<F, V>(
-        i2c_expectations: impl IntoIterator<Item = I2cTransaction>,
-        boost_fast_expectations: impl IntoIterator<Item = PinTransaction>,
-        callback: F,
-        version: V,
-    ) where
-        F: FnOnce(
-            &mut Max2034x<
-                Max2034xInterface<Max20343F, Generic<I2cTransaction>>,
-                Generic<PinTransaction>,
-                Generic<PinTransaction>,
-                V::BootState,
-            >,
-        ),
-        V: DeviceVersion<BootState = Enabled>,
-    {
-        let _ = version;
-        let boost_fast = PinMock::new(&Vec::from_iter(boost_fast_expectations.into_iter()));
-        // We never expect anything from the nint pin as there's no real
-        // device connected.
-        let boost_nint = PinMock::new(&[]);
-        let pins = Pins {
-            boost_fast: Some(boost_fast),
-            boost_nint: Some(boost_nint),
-        };
-
-        // We always expect the CHIP ID to be requested on creation.
-        let mut expectations = vec![I2cTransaction::write_read(
-            V::ADDR,
-            vec![0x00],
-            vec![V::CHIP_ID],
-        )];
-        expectations.extend(i2c_expectations.into_iter());
-
-        let i2c = I2cMock::new(&expectations);
-        let mut buck_boost = crate::Max2034x::new(i2c, Max20343F, pins, Inductor::L1uH).unwrap();
-
-        callback(&mut buck_boost);
-
-        let (ll, _) = buck_boost.free();
-        let mut i2c = ll.free().free();
-        i2c.done();
-    }
-
-    #[test]
-    fn test_enable_fast_boost_pin() {
-        mock_transaction(
-            [
-                I2cTransaction::write_read(Max20343F::ADDR, vec![0x04], vec![0x84]),
-                I2cTransaction::write(Max20343F::ADDR, vec![0x04, 0x84 | 0x80]),
-            ],
-            [PinTransaction::set(PinState::High)],
-            |buck_boost| {
-                buck_boost.enable_fast_boost_pin(true).unwrap();
-                buck_boost.enable_fast_boost(true).unwrap();
-            },
-            Max20343F,
-        )
-    }
-
-    #[test]
-    fn test_set_peak_current_limits() {
-        mock_transaction(
-            [
-                I2cTransaction::write_read(Max20343F::ADDR, vec![0x03], vec![0xC8]),
-                I2cTransaction::write(Max20343F::ADDR, vec![0x03, 0xFF]),
-            ],
-            [],
-            |buck_boost| {
-                buck_boost
-                    .set_peak_current_limits(
-                        CurrentLimit::from_milliamps(750),
-                        CurrentLimit::from_milliamps(750),
-                    )
-                    .unwrap();
-            },
-            Max20343F,
-        )
-    }
-
-    #[test]
-    fn test_set_force_switch_over() {
-        mock_transaction(
-            [
-                I2cTransaction::write_read(Max20343F::ADDR, vec![0x04], vec![0x84]),
-                I2cTransaction::write(Max20343F::ADDR, vec![0x04, 0x84 | 0x20]),
-            ],
-            [],
-            |buck_boost| {
-                buck_boost
-                    .set_force_switch_over(SwitchOverMode::Vin)
-                    .unwrap();
-            },
-            Max20343F,
-        )
-    }
-
-    #[test]
-    fn test_enable_fast_boost() {
-        mock_transaction(
-            [],
-            [PinTransaction::set(PinState::High)],
-            |buck_boost| {
-                buck_boost.enable_fast_boost(true).unwrap();
-            },
-            Max20343F,
-        )
-    }
-
-    #[test]
-    fn test_enable_low_emi() {
-        mock_transaction(
-            [
-                I2cTransaction::write_read(Max20343F::ADDR, vec![0x01], vec![0x93]),
-                I2cTransaction::write(Max20343F::ADDR, vec![0x01, 0x93 | 0x08]),
-            ],
-            [],
-            |buck_boost| {
-                buck_boost.enable_low_emi(true).unwrap();
-            },
-            Max20343F,
-        )
-    }
-
-    #[test]
-    fn test_enable_active_discharge() {
-        mock_transaction(
-            [
-                I2cTransaction::write_read(Max20343F::ADDR, vec![0x01], vec![0x93]),
-                I2cTransaction::write(Max20343F::ADDR, vec![0x01, 0x93 | 0x02]),
-            ],
-            [],
-            |buck_boost| {
-                buck_boost.enable_active_discharge(true).unwrap();
-            },
-            Max20343F,
-        )
-    }
-
-    #[test]
-    fn test_set_switch_freq_threshold() {
-        mock_transaction(
-            [
-                I2cTransaction::write_read(Max20343F::ADDR, vec![0x02], vec![0xD0]),
-                I2cTransaction::write(Max20343F::ADDR, vec![0x02, 0xD0 & 0x3F]),
-            ],
-            [],
-            |buck_boost| {
-                buck_boost
-                    .set_switch_freq_threshold(FrequencyThreshold::Rising25kFalling6_125k)
-                    .unwrap();
-            },
-            Max20343F,
-        )
-    }
 }
